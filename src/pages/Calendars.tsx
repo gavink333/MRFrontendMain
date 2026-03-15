@@ -59,9 +59,9 @@ interface CalendarLink {
 const days = [0, 1, 2, 3, 4, 5, 6] // Monday=0 through Sunday=6
 const dayLabels = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
-const timeOptions = Array.from({ length: 32 }, (_, i) => {
-  const hour = Math.floor(i / 2) + 6
-  const minute = (i % 2) * 30
+const timeOptions = Array.from({ length: 64 }, (_, i) => {
+  const hour = Math.floor(i / 4) + 6
+  const minute = (i % 4) * 15
   return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
 })
 
@@ -338,6 +338,8 @@ export default function Calendars() {
       setNewOverrideOpenTime('09:00')
       setNewOverrideCloseTime('17:00')
       setNewOverrideReason('')
+      setSaveMessage({ type: 'success', text: 'Override saved!' })
+      setTimeout(() => setSaveMessage(null), 3000)
     } catch (err) {
       console.error('Error adding override:', err)
     }
@@ -457,13 +459,6 @@ export default function Calendars() {
         <p className="text-gray-500 mt-1">Manage your calendars and scheduling preferences</p>
       </div>
 
-      {/* Save Message Toast */}
-      {saveMessage && (
-        <div className={`mb-6 p-4 rounded-lg ${saveMessage.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'}`}>
-          {saveMessage.text}
-        </div>
-      )}
-
       {/* Calendar Selector */}
       <div className="flex gap-4 mb-8">
         {calendars.map((calendar) => (
@@ -505,25 +500,19 @@ export default function Calendars() {
                     <div className="flex-1 space-y-2">
                       {(schedule[day] || []).map((shift, shiftIndex) => (
                         <div key={shiftIndex} className="flex items-center gap-2">
-                          <select
+                          <input
+                            type="time"
                             value={shift.open_time}
                             onChange={(e) => handleUpdateShift(day, shiftIndex, 'open_time', e.target.value)}
                             className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                          >
-                            {timeOptions.map((time) => (
-                              <option key={time} value={time}>{time}</option>
-                            ))}
-                          </select>
+                          />
                           <span className="text-gray-500">to</span>
-                          <select
+                          <input
+                            type="time"
                             value={shift.close_time}
                             onChange={(e) => handleUpdateShift(day, shiftIndex, 'close_time', e.target.value)}
                             className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                          >
-                            {timeOptions.map((time) => (
-                              <option key={time} value={time}>{time}</option>
-                            ))}
-                          </select>
+                          />
                           <button
                             onClick={() => handleRemoveShift(day, shiftIndex)}
                             className="p-2 text-gray-400 hover:text-red-500"
@@ -543,7 +532,7 @@ export default function Calendars() {
                   </div>
                 ))}
               </div>
-              <div className="mt-6 pt-6 border-t">
+              <div className="mt-6 pt-6 border-t flex items-center gap-4">
                 <Button
                   className="bg-purple-600 hover:bg-purple-700"
                   onClick={handleSaveSchedule}
@@ -555,6 +544,11 @@ export default function Calendars() {
                     'Save Schedule'
                   )}
                 </Button>
+                {saveMessage && (
+                  <span className={`text-sm font-medium ${saveMessage.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+                    {saveMessage.text}
+                  </span>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -631,21 +625,19 @@ export default function Calendars() {
                     </div>
                     {!newOverrideIsClosed && (
                       <div className="flex items-center gap-2">
-                        <select
+                        <input
+                          type="time"
                           value={newOverrideOpenTime}
                           onChange={(e) => setNewOverrideOpenTime(e.target.value)}
                           className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                        >
-                          {timeOptions.map(t => <option key={t} value={t}>{t}</option>)}
-                        </select>
+                        />
                         <span className="text-gray-500">to</span>
-                        <select
+                        <input
+                          type="time"
                           value={newOverrideCloseTime}
                           onChange={(e) => setNewOverrideCloseTime(e.target.value)}
                           className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                        >
-                          {timeOptions.map(t => <option key={t} value={t}>{t}</option>)}
-                        </select>
+                        />
                       </div>
                     )}
                     <div>
@@ -657,13 +649,18 @@ export default function Calendars() {
                         className="mt-1"
                       />
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex items-center gap-2">
                       <Button className="bg-purple-600 hover:bg-purple-700" onClick={handleAddOverride}>
                         Save Override
                       </Button>
                       <Button variant="outline" onClick={() => setShowAddOverride(false)}>
                         Cancel
                       </Button>
+                      {saveMessage && (
+                        <span className={`text-sm font-medium ${saveMessage.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+                          {saveMessage.text}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -719,17 +716,24 @@ export default function Calendars() {
                   </div>
                 ))}
 
-                <Button
-                  className="w-full bg-purple-600 hover:bg-purple-700 mt-4"
-                  onClick={handleSaveSettings}
-                  disabled={isSavingSettings}
-                >
-                  {isSavingSettings ? (
-                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</>
-                  ) : (
-                    'Save Changes'
+                <div className="mt-4 space-y-2">
+                  <Button
+                    className="w-full bg-purple-600 hover:bg-purple-700"
+                    onClick={handleSaveSettings}
+                    disabled={isSavingSettings}
+                  >
+                    {isSavingSettings ? (
+                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</>
+                    ) : (
+                      'Save Changes'
+                    )}
+                  </Button>
+                  {saveMessage && (
+                    <p className={`text-sm font-medium text-center ${saveMessage.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+                      {saveMessage.text}
+                    </p>
                   )}
-                </Button>
+                </div>
               </CardContent>
             </Card>
           )}
