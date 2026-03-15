@@ -47,10 +47,20 @@ const AssistantContext = createContext<AssistantContextType | undefined>(undefin
 
 export function AssistantProvider({ children }: { children: ReactNode }) {
   const [assistants, setAssistants] = useState<Assistant[]>([])
-  const [selectedAssistant, setSelectedAssistant] = useState<Assistant | null>(null)
+  const [selectedAssistant, setSelectedAssistantState] = useState<Assistant | null>(null)
   const [isLoadingAssistants, setIsLoadingAssistants] = useState(false)
 
   const { orgId, user } = useAuth()
+
+  // Wrapper that also persists to localStorage
+  const setSelectedAssistant = (assistant: Assistant | null) => {
+    setSelectedAssistantState(assistant)
+    if (assistant) {
+      localStorage.setItem('selectedAssistantId', assistant.assistant_id)
+    } else {
+      localStorage.removeItem('selectedAssistantId')
+    }
+  }
 
   // ----------------------------------------------------------
   // Fetch assistants when org is available
@@ -110,15 +120,11 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
 
       // 5. Build the assistant objects
       const enrichedAssistants: Assistant[] = assistantData.map((a: any) => {
-        // Find pricing tier (assistant-specific first, then org-level)
         const assistantTier = tierData?.find((t: any) => t.assistant_id === a.assistant_id)
         const orgTier = tierData?.find((t: any) => t.assistant_id === null)
         const tier = assistantTier || orgTier
 
-        // Count calls for this assistant this month
         const callCount = callCounts?.filter((c: any) => c.assistant_id === a.assistant_id).length || 0
-
-        // Count bookings for this assistant this month
         const bookingCount = bookingCounts?.filter((b: any) => b.assistant_id === a.assistant_id).length || 0
 
         return {
@@ -141,10 +147,10 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
       console.log('Enriched assistants:', enrichedAssistants)
       setAssistants(enrichedAssistants)
 
-      // Auto-select first assistant if none selected
-      if (!selectedAssistant && enrichedAssistants.length > 0) {
-        setSelectedAssistant(enrichedAssistants[0])
-      }
+      // Restore previously selected assistant from localStorage, or default to first
+      const savedId = localStorage.getItem('selectedAssistantId')
+      const restored = savedId ? enrichedAssistants.find(a => a.assistant_id === savedId) : null
+      setSelectedAssistantState(restored || enrichedAssistants[0])
 
     } catch (err) {
       console.error('Failed to fetch assistants:', err)
@@ -153,10 +159,9 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  // Refetch when orgId changes (i.e., user logs in)
+  // Refetch when orgId changes
   useEffect(() => {
     if (orgId) {
-      // Use setTimeout to avoid the same onAuthStateChange deadlock
       setTimeout(() => {
         fetchAssistants()
       }, 0)

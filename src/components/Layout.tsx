@@ -1,4 +1,4 @@
-import { Outlet, NavLink } from 'react-router-dom'
+import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { 
   LayoutDashboard, 
   Phone, 
@@ -12,7 +12,7 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import { useAssistant } from '@/context/AssistantContext'
-import { mockUser } from '@/data/mockData'
+import { useAuth } from '@/context/AuthContext'
 
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -21,9 +21,26 @@ const navItems = [
   { path: '/settings', label: 'Settings', icon: Settings },
 ]
 
+function formatPhone(number: string): string {
+  if (!number) return ''
+  if (number.includes('(')) return number
+  const digits = number.replace(/\D/g, '')
+  if (digits.length === 11 && digits.startsWith('1')) {
+    return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`
+  }
+  return number
+}
+
 export default function Layout() {
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const { selectedAssistant } = useAssistant()
+  const { user, signOut } = useAuth()
+  const navigate = useNavigate()
+
+  const handleSignOut = async () => {
+    await signOut()
+    navigate('/login')
+  }
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -57,12 +74,16 @@ export default function Layout() {
         {selectedAssistant && (
           <div className="px-6 py-4 border-b border-slate-800">
             <p className="text-xs text-slate-400 mb-1">Current Assistant</p>
-            <p className="text-sm font-medium mb-1">{selectedAssistant.name}</p>
-            <div className="flex items-center gap-2">
-              <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                {selectedAssistant.subscriptionPlan}
-              </span>
-            </div>
+            <p className="text-sm font-medium mb-1">
+              {selectedAssistant.assistant_name || formatPhone(selectedAssistant.inbound_number)}
+            </p>
+            {selectedAssistant.tier_name && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                  {selectedAssistant.tier_name}
+                </span>
+              </div>
+            )}
           </div>
         )}
 
@@ -100,18 +121,25 @@ export default function Layout() {
                 <User className="w-4 h-4" />
               </div>
               <div className="flex-1 text-left">
-                <p className="text-sm font-medium truncate">{mockUser.email}</p>
+                <p className="text-sm font-medium truncate">{user?.email || '—'}</p>
               </div>
               <ChevronDown className="w-4 h-4 text-slate-400" />
             </button>
             
             {userMenuOpen && (
               <div className="absolute bottom-full left-0 right-0 mb-2 bg-slate-800 rounded-lg shadow-lg overflow-hidden">
-                <button className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-300 hover:bg-slate-700 transition-colors">
+                <NavLink
+                  to="/settings"
+                  onClick={() => setUserMenuOpen(false)}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-300 hover:bg-slate-700 transition-colors"
+                >
                   <Settings className="w-4 h-4" />
                   Account Settings
-                </button>
-                <button className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-400 hover:bg-slate-700 transition-colors">
+                </NavLink>
+                <button
+                  onClick={handleSignOut}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-400 hover:bg-slate-700 transition-colors"
+                >
                   <LogOut className="w-4 h-4" />
                   Sign Out
                 </button>
