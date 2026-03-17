@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Phone, Shield, Bell, User, Copy, Trash2, Plus, AlertCircle, Sparkles, CheckCircle2, Loader2 } from 'lucide-react'
+import { Phone, Shield, Bell, User, Copy, Trash2, Plus, AlertCircle, Sparkles, CheckCircle2, Loader2, Pencil } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -8,6 +8,7 @@ import { Switch } from '@/components/ui/switch'
 import { useAssistant } from '@/context/AssistantContext'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/lib/supabase'
+
 
 // ============================================================
 // TYPES
@@ -77,6 +78,10 @@ export default function Settings() {
 
   // Org name
   const [orgName, setOrgName] = useState<string>('')
+  
+  // Change Name
+  const [isEditingName, setIsEditingName] = useState(false)
+  const [editName, setEditName] = useState('')
 
   // ----------------------------------------------------------
   // Fetch all settings data
@@ -236,6 +241,78 @@ export default function Settings() {
     setTimeout(() => setSaveMessage(null), 2000)
   }
 
+
+
+  // ----------------------------------------------------------
+  // Assistant Active/Inactive Toggle Handler
+  // ----------------------------------------------------------
+
+  const handleToggleAssistantActive = async (newValue: boolean) => {
+    if (!selectedAssistant) return
+
+    const message = newValue
+      ? 'Are you sure you want to turn this assistant back on? It will resume handling all incoming calls.'
+      : 'Are you sure you want to turn off this assistant? It will NOT be able to handle any calls while turned off. Callers will not be able to reach the AI receptionist.'
+
+    const confirmed = window.confirm(message)
+    if (!confirmed) return
+
+    // Second confirmation for turning OFF (more destructive)
+    if (!newValue) {
+      const doubleConfirm = window.confirm(
+        'Please confirm again: Turning off the assistant means ALL incoming calls will go unanswered until you turn it back on.'
+      )
+      if (!doubleConfirm) return
+    }
+
+    try {
+      const { error } = await supabase
+        .from('assistant_config')
+        .update({ is_active: newValue })
+        .eq('assistant_id', selectedAssistant.assistant_id)
+
+      if (error) throw error
+
+      // Refresh assistant data so the UI updates everywhere
+      await refreshAssistants()
+
+      setSaveMessage({
+        type: 'success',
+        text: newValue ? 'Assistant activated successfully!' : 'Assistant deactivated.'
+      })
+      setTimeout(() => setSaveMessage(null), 3000)
+    } catch (err) {
+      console.error('Error toggling assistant:', err)
+      setSaveMessage({ type: 'error', text: 'Failed to update assistant status.' })
+    }
+  }
+
+
+  // ----------------------------------------------------------
+  // Save Handler
+  // ----------------------------------------------------------
+  const handleSaveName = async () => {
+    if (!selectedAssistant) return
+
+    try {
+      const { error } = await supabase
+        .from('assistant_config')
+        .update({ assistant_name: editName.trim() || null })
+        .eq('assistant_id', selectedAssistant.assistant_id)
+
+      if (error) throw error
+
+      setIsEditingName(false)
+      await refreshAssistants()
+
+      setSaveMessage({ type: 'success', text: 'Assistant name updated!' })
+      setTimeout(() => setSaveMessage(null), 3000)
+    } catch (err) {
+      console.error('Error updating name:', err)
+      setSaveMessage({ type: 'error', text: 'Failed to update name.' })
+    }
+  }
+
   // ----------------------------------------------------------
   // LOADING
   // ----------------------------------------------------------
@@ -326,25 +403,69 @@ export default function Settings() {
         {/* Assistant Management */}
         <Card className="border-gray-200 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-lg font-semibold flex items-center gap-2">
-              <Phone className="w-5 h-5" />
-              Assistant Management
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                <Phone className="w-5 h-5" />
+                Assistant Management
+              </CardTitle>
+              <div className="flex items-center gap-3">
+                <span className={`text-sm font-medium ${selectedAssistant.is_active ? 'text-green-600' : 'text-red-500'}`}>
+                  {selectedAssistant.is_active ? 'Active' : 'Inactive'}
+                </span>
+                <Switch
+                  checked={selectedAssistant.is_active}
+                  onCheckedChange={handleToggleAssistantActive}
+                />
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="p-4 bg-gray-50 rounded-lg">
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <p className="text-sm font-medium text-gray-900">Assistant ID</p>
-                    <button
-                      onClick={() => copyToClipboard(selectedAssistant.assistant_id)}
-                      className="p-1 text-gray-400 hover:text-gray-600"
-                    >
-                      <Copy className="w-3 h-3" />
-                    </button>
-                  </div>
-                  <p className="text-xs text-gray-500 font-mono">{selectedAssistant.assistant_id}</p>
+              {/* Assistant Name (editable) */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  {isEditingName ? (
+                    <>
+                      <Input
+                        value={editName}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditName(e.target.value)}
+                        className="w-48 h-8 text-sm"
+                        placeholder="Assistant name"
+                        autoFocus
+                      />
+                      <Button
+                        size="sm"
+                        className="h-8 bg-purple-600 hover:bg-purple-700 text-xs"
+                        onClick={handleSaveName}
+                      >
+                        Save
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 text-xs"
+                        onClick={() => setIsEditingName(false)}
+                      >
+                        Cancel
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm font-medium text-gray-900">
+                        {selectedAssistant.assistant_name || 'Unnamed Assistant'}
+                      </p>
+                      <button
+                        onClick={() => {
+                          setEditName(selectedAssistant.assistant_name || '')
+                          setIsEditingName(true)
+                        }}
+                        className="p-1 text-gray-400 hover:text-purple-600"
+                        title="Edit name"
+                      >
+                        <Pencil className="w-3 h-3" />
+                      </button>
+                    </>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={`w-2 h-2 rounded-full ${selectedAssistant.is_active ? 'bg-green-500' : 'bg-red-500'}`} />
@@ -352,6 +473,18 @@ export default function Settings() {
                     {selectedAssistant.is_active ? 'Active' : 'Inactive'}
                   </span>
                 </div>
+              </div>
+
+              {/* Assistant ID */}
+              <div className="flex items-center gap-2 mb-4">
+                <p className="text-xs text-gray-500">ID:</p>
+                <p className="text-xs text-gray-500 font-mono">{selectedAssistant.assistant_id}</p>
+                <button
+                  onClick={() => copyToClipboard(selectedAssistant.assistant_id)}
+                  className="p-1 text-gray-400 hover:text-gray-600"
+                >
+                  <Copy className="w-3 h-3" />
+                </button>
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
