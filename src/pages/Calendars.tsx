@@ -110,7 +110,14 @@ export default function Calendars() {
   const { selectedAssistant } = useAssistant()
   const { orgId } = useAuth()
 
+  const [showPastOverrides, setShowPastOverrides] = useState(false)
+
   const selectedCalendar = calendars.find(c => c.calendar_id === selectedCalendarId) || null
+  const today = new Date().toISOString().split('T')[0]
+  const filteredOverrides = overrides
+    .filter(o => showPastOverrides || o.override_date >= today)
+    .sort((a, b) => b.override_date.localeCompare(a.override_date))
+
 
   // ----------------------------------------------------------
   // Fetch all calendar data
@@ -328,7 +335,7 @@ export default function Calendars() {
       if (error) throw error
 
       if (data) {
-        setOverrides(prev => [...prev, data[0]])
+        setOverrides(prev => [data[0], ...prev])
       }
 
       // Reset form
@@ -556,58 +563,25 @@ export default function Calendars() {
           {/* Schedule Overrides */}
           <Card className="border-gray-200 shadow-sm mt-6">
             <CardHeader>
-              <CardTitle className="text-lg font-semibold">Schedule Overrides</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg font-semibold">Schedule Overrides</CardTitle>
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={showPastOverrides}
+                      onChange={(e) => setShowPastOverrides(e.target.checked)}
+                      className="rounded border-gray-300"
+                    />
+                    <span className="text-xs text-gray-500">Show past</span>
+                  </label>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
-              {overrides.length === 0 ? (
-                <p className="text-sm text-gray-500 py-4">No overrides set. Add overrides for holidays or special hours.</p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-gray-200">
-                        <th className="text-left text-xs font-medium text-gray-500 uppercase pb-3">Date</th>
-                        <th className="text-left text-xs font-medium text-gray-500 pb-3">Status</th>
-                        <th className="text-left text-xs font-medium text-gray-500 pb-3">Reason</th>
-                        <th className="text-left text-xs font-medium text-gray-500 pb-3">Active</th>
-                        <th className="text-left text-xs font-medium text-gray-500 pb-3"></th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {overrides.map((override) => (
-                        <tr key={override.id}>
-                          <td className="py-3 text-sm text-gray-900">{override.override_date}</td>
-                          <td className="py-3">
-                            <span className={`inline-flex px-2 py-1 rounded text-xs font-medium ${
-                              override.is_closed
-                                ? 'bg-red-100 text-red-800'
-                                : 'bg-yellow-100 text-yellow-800'
-                            }`}>
-                              {override.is_closed ? 'Closed' : `Custom: ${override.open_time?.slice(0, 5)} - ${override.close_time?.slice(0, 5)}`}
-                            </span>
-                          </td>
-                          <td className="py-3 text-sm text-gray-600">{override.reason || '—'}</td>
-                          <td className="py-3">
-                            <Switch
-                              checked={override.is_active}
-                              onCheckedChange={() => handleToggleOverride(override.id, override.is_active)}
-                            />
-                          </td>
-                          <td className="py-3">
-                            <button onClick={() => handleDeleteOverride(override.id)} className="p-1 text-gray-400 hover:text-red-500">
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-
-              {/* Add Override Form */}
+              {/* Add Override Form — at the top */}
               {showAddOverride ? (
-                <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
                   <h4 className="text-sm font-medium text-gray-900 mb-3">Add Override</h4>
                   <div className="space-y-3">
                     <div>
@@ -665,10 +639,61 @@ export default function Calendars() {
                   </div>
                 </div>
               ) : (
-                <Button variant="outline" className="mt-4 border-gray-300" onClick={() => setShowAddOverride(true)}>
+                <Button variant="outline" className="mb-6 border-gray-300" onClick={() => setShowAddOverride(true)}>
                   <Plus className="w-4 h-4 mr-2" />
                   Add Override
                 </Button>
+              )}
+
+              {/* Override list */}
+              {filteredOverrides.length === 0 ? (
+                <p className="text-sm text-gray-500 py-4">
+                  {overrides.length === 0
+                    ? 'No overrides set. Add overrides for holidays or special hours.'
+                    : 'No upcoming overrides. Toggle "Show past" to see previous overrides.'}
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-gray-200">
+                        <th className="text-left text-xs font-medium text-gray-500 uppercase pb-3">Date</th>
+                        <th className="text-left text-xs font-medium text-gray-500 pb-3">Status</th>
+                        <th className="text-left text-xs font-medium text-gray-500 pb-3">Reason</th>
+                        <th className="text-left text-xs font-medium text-gray-500 pb-3">Active</th>
+                        <th className="text-left text-xs font-medium text-gray-500 pb-3"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {filteredOverrides.map((override) => (
+                        <tr key={override.id} className={override.override_date < new Date().toISOString().split('T')[0] ? 'opacity-50' : ''}>
+                          <td className="py-3 text-sm text-gray-900">{override.override_date}</td>
+                          <td className="py-3">
+                            <span className={`inline-flex px-2 py-1 rounded text-xs font-medium ${
+                              override.is_closed
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-yellow-100 text-yellow-800'
+                            }`}>
+                              {override.is_closed ? 'Closed' : `Custom: ${override.open_time?.slice(0, 5)} - ${override.close_time?.slice(0, 5)}`}
+                            </span>
+                          </td>
+                          <td className="py-3 text-sm text-gray-600">{override.reason || '—'}</td>
+                          <td className="py-3">
+                            <Switch
+                              checked={override.is_active}
+                              onCheckedChange={() => handleToggleOverride(override.id, override.is_active)}
+                            />
+                          </td>
+                          <td className="py-3">
+                            <button onClick={() => handleDeleteOverride(override.id)} className="p-1 text-gray-400 hover:text-red-500">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </CardContent>
           </Card>
