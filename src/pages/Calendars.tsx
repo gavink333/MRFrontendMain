@@ -143,8 +143,12 @@ export default function Calendars() {
             .eq('assistant_id', assistantId),
         ])
 
-        const cals = calConfigResult.data || []
+        const allCals = calConfigResult.data || []
         const links = calLinksResult.data || []
+
+        // Only show calendars that are linked to this assistant
+        const linkedCalendarIds = links.map((l: any) => l.calendar_id)
+        const cals = allCals.filter(c => linkedCalendarIds.includes(c.calendar_id))
 
         setCalendars(cals)
         setCalendarLinks(links)
@@ -355,13 +359,25 @@ export default function Calendars() {
   // ----------------------------------------------------------
   // Settings handlers
   // ----------------------------------------------------------
-  const handleSettingChange = (key: string, value: number | boolean) => {
+  const handleSettingChange = (key: string, value: number | boolean | string) => {
     if (!settings) return
     setSettings(prev => prev ? { ...prev, [key]: value } : prev)
   }
 
   const handleSaveSettings = async () => {
     if (!selectedCalendarId || !settings) return
+
+    // Check for empty fields
+    const hasEmpty = calendarSettingsConfig.some(config => {
+      const val = (settings as any)[config.key]
+      return val === '' || val === null || val === undefined
+    })
+    if (hasEmpty) {
+      setSaveMessage({ type: 'error', text: 'All fields must have a value before saving.' })
+      setTimeout(() => setSaveMessage(null), 3000)
+      return
+    }
+
     setIsSavingSettings(true)
     setSaveMessage(null)
 
@@ -711,22 +727,30 @@ export default function Calendars() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {calendarSettingsConfig.map((config) => (
-                  <div key={config.key}>
-                    <Label className="text-sm font-medium">{config.label}</Label>
-                    <Input
-                      type="number"
-                      value={(settings as any)[config.key] ?? 0}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                        handleSettingChange(config.key, parseInt(e.target.value) || 0)
-                      }
-                      className="mt-1"
-                      min={config.min}
-                      max={config.max}
-                    />
-                    <p className="text-xs text-gray-500 mt-1">{config.helpText}</p>
-                  </div>
-                ))}
+                {calendarSettingsConfig.map((config) => {
+                  const val = (settings as any)[config.key]
+                  const isEmpty = val === '' || val === null || val === undefined
+                  return (
+                    <div key={config.key}>
+                      <Label className="text-sm font-medium">{config.label}</Label>
+                      <Input
+                        type="number"
+                        value={val ?? ''}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                          handleSettingChange(config.key, e.target.value === '' ? '' as any : parseInt(e.target.value))
+                        }
+                        className={`mt-1 ${isEmpty ? 'border-red-500 focus:ring-red-500' : ''}`}
+                        min={config.min}
+                        max={config.max}
+                      />
+                      {isEmpty ? (
+                        <p className="text-xs text-red-500 mt-1">This field must have a value, even if the value is 0.</p>
+                      ) : (
+                        <p className="text-xs text-gray-500 mt-1">{config.helpText}</p>
+                      )}
+                    </div>
+                  )
+                })}
 
                 {toggleSettingsConfig.map((config) => (
                   <div key={config.key} className="flex items-center justify-between pt-2">
@@ -758,6 +782,12 @@ export default function Calendars() {
                       {saveMessage.text}
                     </p>
                   )}
+                  <div className="flex items-start gap-2 p-3 bg-yellow-50 rounded-lg">
+                    <AlertCircle className="w-4 h-4 text-yellow-600 flex-shrink-0 mt-0.5" />
+                    <p className="text-xs text-yellow-800">
+                      These settings apply to this calendar across all assistants that use it. Contact support if you need different settings per assistant.
+                    </p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
