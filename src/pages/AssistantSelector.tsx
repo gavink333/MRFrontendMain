@@ -43,12 +43,7 @@ export default function AssistantSelector() {
     )
   }
 
-  // If only one assistant, skip to dashboard directly
-  if (assistants.length === 1) {
-    setSelectedAssistant(assistants[0])
-    navigate('/dashboard')
-    return null
-  }
+
 
   const handleSelectAssistant = (assistant: typeof assistants[0]) => {
     setSelectedAssistant(assistant)

@@ -1,7 +1,25 @@
+import { useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Bot, Mail } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useAuth } from '@/context/AuthContext'
 
 export default function AccountPending() {
+  const { signOut, orgId } = useAuth()
+  const navigate = useNavigate()
+
+  // Auto-redirect when org becomes available
+  useEffect(() => {
+    if (orgId) {
+      navigate('/assistants')
+    }
+  }, [orgId, navigate])
+
+  const handleBackToLogin = async () => {
+    await signOut()
+    window.location.href = '/login'
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
       <div className="w-full max-w-md text-center">
@@ -40,7 +58,7 @@ export default function AccountPending() {
           <Button 
             variant="outline" 
             className="border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white"
-            onClick={() => window.location.href = '/login'}
+            onClick={handleBackToLogin}
           >
             Back to Login
           </Button>

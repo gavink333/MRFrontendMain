@@ -25,6 +25,9 @@ interface NotificationRule {
 interface PricingTier {
   tier_name: string
   billing_unit_time: string
+  subscription_fee: number | null
+  min_minutes: number | null
+  max_minutes: number | null
   is_active: boolean
 }
 
@@ -90,7 +93,7 @@ export default function Settings() {
           // Pricing tier
           supabase
             .from('org_assistant_pricing_tiers')
-            .select('tier_name, billing_unit_time, is_active')
+            .select('tier_name, billing_unit_time, subscription_fee, min_minutes, max_minutes, is_active')
             .eq('org_id', orgId!)
             .eq('is_active', true)
             .or(`assistant_id.eq.${assistantId},assistant_id.is.null`)
@@ -281,14 +284,35 @@ export default function Settings() {
                   <p className="text-xl font-bold text-gray-900">
                     {pricingTier?.tier_name || selectedAssistant.tier_name || 'No plan assigned'}
                   </p>
+                  {pricingTier && pricingTier.subscription_fee != null && (
+                  <p className="text-sm text-gray-600 mt-1">
+                    ${Number(pricingTier.subscription_fee).toLocaleString()}/{pricingTier.billing_unit_time === 'yearly' ? 'yr' : pricingTier.billing_unit_time === 'quarterly' ? 'qtr' : pricingTier.billing_unit_time === 'weekly' ? 'wk' : pricingTier.billing_unit_time === 'biweekly' ? '(2 wk)' : 'mo'}
+                    {pricingTier.billing_unit_time === 'yearly' ? (
+                      <span className="text-gray-400 ml-1">
+                        (${Math.round(Number(pricingTier.subscription_fee) / 12).toLocaleString()}/mo)
+                      </span>
+                    ) : null}
+                  </p>
+                )}
                 </div>
               </div>
               <div className="flex items-center gap-6">
                 <div className="text-right">
-                  <p className="text-sm text-gray-500">Billing Cycle</p>
-                  <p className="text-sm font-medium text-gray-900 capitalize">
-                    {pricingTier?.billing_unit_time || selectedAssistant.billing_unit_time || '—'}
-                  </p>
+                  {pricingTier?.min_minutes && pricingTier?.max_minutes ? (
+                    <>
+                      <p className="text-sm text-gray-500">Included Minutes</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {pricingTier.min_minutes.toLocaleString()}–{pricingTier.max_minutes.toLocaleString()} min
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm text-gray-500">Billing Cycle</p>
+                      <p className="text-sm font-medium text-gray-900 capitalize">
+                        {pricingTier?.billing_unit_time || selectedAssistant.billing_unit_time || '—'}
+                      </p>
+                    </>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-green-100 rounded-full">
                   <CheckCircle2 className="w-4 h-4 text-green-600" />

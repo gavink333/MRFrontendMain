@@ -121,42 +121,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Initialize auth listener
   // ----------------------------------------------------------
   useEffect(() => {
-  const { data: { subscription } } = supabase.auth.onAuthStateChange(
-    (event, newSession) => {
-      console.log('AUTH EVENT:', event, newSession?.user?.email)
-      
-      // Update session and user synchronously
-      setSession(newSession)
-      setUser(newSession?.user ?? null)
-      
-      // Fetch org membership OUTSIDE the callback using setTimeout
-      // This avoids the Supabase deadlock issue
-      if (newSession?.user) {
-        setTimeout(async () => {
-          const membership = await fetchOrgMembership(newSession.user.id)
-          console.log('MEMBERSHIP RESULT:', membership)
-          setOrgId(membership?.org_id ?? null)
-          setUserRole(membership?.role ?? null)
+    let timeoutId: ReturnType<typeof setTimeout>
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, newSession) => {
+        console.log('AUTH EVENT:', event, newSession?.user?.email)
+
+        // Skip INITIAL_SESSION with no session — wait for SIGNED_IN instead
+        if (event === 'INITIAL_SESSION' && !newSession) {
+          return
+        }
+
+        // Real auth event received — cancel the timeout
+        if (timeoutId) clearTimeout(timeoutId)
+
+        // Update session and user synchronously
+        setSession(newSession)
+        setUser(newSession?.user ?? null)
+
+        if (newSession?.user) {
+          setTimeout(async () => {
+            const membership = await fetchOrgMembership(newSession.user.id)
+            console.log('MEMBERSHIP RESULT:', membership)
+            setOrgId(membership?.org_id ?? null)
+            setUserRole(membership?.role ?? null)
+            setIsLoading(false)
+          }, 0)
+        } else {
+          setOrgId(null)
+          setUserRole(null)
           setIsLoading(false)
-        }, 0)
-      } else {
-        setOrgId(null)
-        setUserRole(null)
-        setIsLoading(false)
+        }
       }
+    )
+
+    // Safety timeout — if no real auth event fires within 3 seconds,
+    // assume no session and show login
+    timeoutId = setTimeout(() => {
+      console.log('AUTH TIMEOUT: No auth event received, showing login')
+      setIsLoading(false)
+    }, 3000)
+
+    return () => {
+      subscription.unsubscribe()
+      clearTimeout(timeoutId)
     }
-  )
-
-  const timeout = setTimeout(() => {
-    console.log('AUTH TIMEOUT: No auth event received, showing login')
-    setIsLoading(false)
-  }, 3000)
-
-  return () => {
-    subscription.unsubscribe()
-    clearTimeout(timeout)
-  }
-}, [])
+  }, [])
 
   // ----------------------------------------------------------
   // Auth actions
