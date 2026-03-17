@@ -793,38 +793,7 @@ export default function Calendars() {
             </Card>
           )}
 
-          {/* Assistant Calendar Authorization */}
-          <Card className="border-gray-200 shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold">Assistant Authorization</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {calendarLinks.length === 0 ? (
-                <p className="text-sm text-gray-500">No calendar links found for this assistant.</p>
-              ) : (
-                <div className="space-y-4">
-                  {calendarLinks.map((link, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">{link.calendar_id}</p>
-                        <p className="text-xs text-gray-500">Linked to assistant</p>
-                      </div>
-                      <Switch
-                        checked={link.is_authorized}
-                        onCheckedChange={() => handleToggleAuthorization(link)}
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div className="mt-4 p-3 bg-yellow-50 rounded-lg flex items-start gap-2">
-                <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-yellow-800">
-                  Deauthorizing will prevent the assistant from booking, cancelling, or rescheduling appointments.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+        
         </div>
       </div>
     </div>
