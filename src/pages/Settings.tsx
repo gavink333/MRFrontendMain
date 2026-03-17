@@ -83,6 +83,9 @@ export default function Settings() {
   const [isEditingName, setIsEditingName] = useState(false)
   const [editName, setEditName] = useState('')
 
+  const [showToggleConfirm, setShowToggleConfirm] = useState(false)
+  const [pendingActiveState, setPendingActiveState] = useState<boolean | null>(null)
+
   // ----------------------------------------------------------
   // Fetch all settings data
   // ----------------------------------------------------------
@@ -247,45 +250,37 @@ export default function Settings() {
   // Assistant Active/Inactive Toggle Handler
   // ----------------------------------------------------------
 
-  const handleToggleAssistantActive = async (newValue: boolean) => {
-    if (!selectedAssistant) return
+  const handleToggleAssistantActive = (newValue: boolean) => {
+    setPendingActiveState(newValue)
+    setShowToggleConfirm(true)
+  }
 
-    const message = newValue
-      ? 'Are you sure you want to turn this assistant back on? It will resume handling all incoming calls.'
-      : 'Are you sure you want to turn off this assistant? It will NOT be able to handle any calls while turned off. Callers will not be able to reach the AI receptionist.'
-
-    const confirmed = window.confirm(message)
-    if (!confirmed) return
-
-    // Second confirmation for turning OFF (more destructive)
-    if (!newValue) {
-      const doubleConfirm = window.confirm(
-        'Please confirm again: Turning off the assistant means ALL incoming calls will go unanswered until you turn it back on.'
-      )
-      if (!doubleConfirm) return
-    }
+  const confirmToggleAssistant = async () => {
+    if (!selectedAssistant || pendingActiveState === null) return
+    setShowToggleConfirm(false)
 
     try {
       const { error } = await supabase
         .from('assistant_config')
-        .update({ is_active: newValue })
+        .update({ is_active: pendingActiveState })
         .eq('assistant_id', selectedAssistant.assistant_id)
 
       if (error) throw error
 
-      // Refresh assistant data so the UI updates everywhere
       await refreshAssistants()
 
       setSaveMessage({
         type: 'success',
-        text: newValue ? 'Assistant activated successfully!' : 'Assistant deactivated.'
+        text: pendingActiveState ? 'Assistant activated successfully!' : 'Assistant deactivated.'
       })
       setTimeout(() => setSaveMessage(null), 3000)
     } catch (err) {
       console.error('Error toggling assistant:', err)
       setSaveMessage({ type: 'error', text: 'Failed to update assistant status.' })
     }
+    setPendingActiveState(null)
   }
+
 
 
   // ----------------------------------------------------------
@@ -704,6 +699,39 @@ export default function Settings() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Toggle Assistant Confirmation Modal */}
+        {showToggleConfirm && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                {pendingActiveState ? 'Activate Assistant?' : 'Deactivate Assistant?'}
+              </h3>
+              <p className="text-sm text-gray-600 mb-6">
+                {pendingActiveState
+                  ? 'This will turn the assistant back on. It will resume handling all incoming calls immediately.'
+                  : 'This will turn off the assistant. It will NOT be able to handle any calls while deactivated. All incoming calls will go unanswered until you turn it back on.'}
+              </p>
+              <div className="flex justify-end gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowToggleConfirm(false)
+                    setPendingActiveState(null)
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className={pendingActiveState ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}
+                  onClick={confirmToggleAssistant}
+                >
+                  {pendingActiveState ? 'Yes, Activate' : 'Yes, Deactivate'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
