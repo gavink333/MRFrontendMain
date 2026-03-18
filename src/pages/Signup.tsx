@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { Bot, Mail, Lock, ArrowRight, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAuth } from '@/context/AuthContext'
+import { Turnstile } from '@marsidev/react-turnstile'
 
 export default function Signup() {
   const [email, setEmail] = useState('')
@@ -14,6 +15,8 @@ export default function Signup() {
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [signupComplete, setSignupComplete] = useState(false)
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const captchaRef = useRef<any>(null)
 
   const { signUpWithEmail, signInWithGoogle } = useAuth()
 
@@ -21,33 +24,37 @@ export default function Signup() {
     e.preventDefault()
     setError(null)
 
-    // Validate passwords match
     if (password !== confirmPassword) {
       setError('Passwords do not match')
       return
     }
 
-    // Validate password strength
     if (password.length < 8) {
       setError('Password must be at least 8 characters')
       return
     }
+
     if (!/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
       setError('Password must include an uppercase letter and a number')
       return
     }
 
+    if (!captchaToken) {
+      setError('Please complete the CAPTCHA verification')
+      return
+    }
+
     setIsSubmitting(true)
 
-    const { error } = await signUpWithEmail(email, password)
+    const { error } = await signUpWithEmail(email, password, captchaToken)
+
+    captchaRef.current?.reset()
+    setCaptchaToken(null)
 
     if (error) {
       setError(error)
       setIsSubmitting(false)
     } else {
-      // Show confirmation message
-      // (If "Confirm email" is ON in Supabase, user needs to check their email)
-      // (If "Confirm email" is OFF, they're logged in immediately)
       setSignupComplete(true)
       setIsSubmitting(false)
     }
@@ -61,7 +68,6 @@ export default function Signup() {
     }
   }
 
-  // Show success message after signup
   if (signupComplete) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
@@ -155,7 +161,7 @@ export default function Signup() {
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
                     className="pl-10 bg-slate-900/50 border-slate-700 text-white placeholder:text-slate-500"
                     required
-                    minLength={6}
+                    minLength={8}
                   />
                 </div>
               </div>
@@ -171,10 +177,19 @@ export default function Signup() {
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
                     className="pl-10 bg-slate-900/50 border-slate-700 text-white placeholder:text-slate-500"
                     required
-                    minLength={6}
+                    minLength={8}
                   />
                 </div>
               </div>
+
+              <Turnstile
+                ref={captchaRef}
+                siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
+                onSuccess={(token) => setCaptchaToken(token)}
+                onExpire={() => setCaptchaToken(null)}
+                options={{ theme: 'dark' }}
+              />
+
               <Button 
                 type="submit" 
                 className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"

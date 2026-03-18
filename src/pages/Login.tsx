@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { Bot, Mail, Lock, ArrowRight, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAuth } from '@/context/AuthContext'
+import { Turnstile } from '@marsidev/react-turnstile'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -13,22 +14,31 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [resetSent, setResetSent] = useState(false)
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const captchaRef = useRef<any>(null)
 
   const { signInWithEmail, signInWithGoogle, resetPassword } = useAuth()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+
+    if (!captchaToken) {
+      setError('Please complete the CAPTCHA verification')
+      return
+    }
+
     setIsSubmitting(true)
 
-    const { error } = await signInWithEmail(email, password)
+    const { error } = await signInWithEmail(email, password, captchaToken)
+
+    captchaRef.current?.reset()
+    setCaptchaToken(null)
 
     if (error) {
       setError(error)
       setIsSubmitting(false)
     }
-    // If successful, AuthContext detects the session change
-    // and ProtectedRoute/PublicOnlyRoute handles the redirect automatically
   }
 
   const handleGoogleSignIn = async () => {
@@ -37,7 +47,6 @@ export default function Login() {
     if (error) {
       setError(error)
     }
-    // Google OAuth redirects to Google's page, then back to our app
   }
 
   const handleForgotPassword = async () => {
@@ -45,10 +54,17 @@ export default function Login() {
       setError('Please enter your email address first, then click "Forgot password"')
       return
     }
+    if (!captchaToken) {
+      setError('Please complete the CAPTCHA verification')
+      return
+    }
     setError(null)
     setIsSubmitting(true)
 
-    const { error } = await resetPassword(email)
+    const { error } = await resetPassword(email, captchaToken)
+
+    captchaRef.current?.reset()
+    setCaptchaToken(null)
 
     if (error) {
       setError(error)
@@ -132,6 +148,15 @@ export default function Login() {
                   />
                 </div>
               </div>
+
+              <Turnstile
+                ref={captchaRef}
+                siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
+                onSuccess={(token) => setCaptchaToken(token)}
+                onExpire={() => setCaptchaToken(null)}
+                options={{ theme: 'dark' }}
+              />
+
               <Button 
                 type="submit" 
                 className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
