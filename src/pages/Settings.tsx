@@ -684,17 +684,24 @@ export default function Settings() {
                   <p className="text-sm font-medium text-gray-900">{orgName || '—'}</p>
                 </div>
               </div>
-              <div className="flex gap-3 pt-2">
-                <Button variant="outline" className="border-gray-300" onClick={handleChangePassword}>
-                  Change Password
-                </Button>
-                <Button
-                  variant="outline"
-                  className="border-gray-300 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-300"
-                  onClick={handleSignOut}
-                >
-                  Sign Out
-                </Button>
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center gap-3">
+                  <Button variant="outline" className="border-gray-300" onClick={handleChangePassword}>
+                    Change Password
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="border-gray-300 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-300"
+                    onClick={handleSignOut}
+                  >
+                    Sign Out
+                  </Button>
+                  {saveMessage && (
+                    <span className={`text-sm font-medium ${saveMessage.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+                      {saveMessage.text}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </CardContent>

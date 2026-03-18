@@ -12,6 +12,7 @@ import Dashboard from './pages/Dashboard'
 import CallHistory from './pages/CallHistory'
 import Calendars from './pages/Calendars'
 import Settings from './pages/Settings'
+import ResetPassword from './pages/ResetPassword'
 
 function App() {
   return (
@@ -25,6 +26,8 @@ function App() {
             } />
             <Route path="/signup" element={
               <PublicOnlyRoute><Signup /></PublicOnlyRoute>
+            } />
+            <Route path="/reset-password" element={<ResetPassword />
             } />
 
             {/* Account pending — requires auth but NOT org */}
