@@ -73,32 +73,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // ----------------------------------------------------------
   // Create a membership row for new users (org_id = null)
   // ----------------------------------------------------------
-  async function createMembershipIfNeeded(userId: string) {
-    try {
-      const { data: existing } = await supabase
-        .from('user_org_memberships')
-        .select('id')
-        .eq('user_id', userId)
-        .limit(1)
-        .maybeSingle()
+  // async function createMembershipIfNeeded(userId: string) {
+  //   try {
+  //     const { data: existing } = await supabase
+  //       .from('user_org_memberships')
+  //       .select('id')
+  //       .eq('user_id', userId)
+  //       .limit(1)
+  //       .maybeSingle()
 
-      if (existing) return
+  //     if (existing) return
 
-      const { error } = await supabase
-        .from('user_org_memberships')
-        .insert({
-          user_id: userId,
-          role: 'owner',
-          org_id: null
-        })
+  //     const { error } = await supabase
+  //       .from('user_org_memberships')
+  //       .insert({
+  //         user_id: userId,
+  //         role: 'owner',
+  //         org_id: null
+  //       })
 
-      if (error) {
-        console.error('Could not auto-create membership:', error)
-      }
-    } catch (err) {
-      console.error('Membership creation error:', err)
-    }
-  }
+  //     if (error) {
+  //       console.error('Could not auto-create membership:', error)
+  //     }
+  //   } catch (err) {
+  //     console.error('Membership creation error:', err)
+  //   }
+  // }
 
   // ----------------------------------------------------------
   // Handle session changes
