@@ -46,7 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // ----------------------------------------------------------
   async function fetchOrgMembership(userId: string): Promise<OrgMembership | null> {
     try {
-      console.log('fetchOrgMembership for userId:', userId)
+      // console.log('fetchOrgMembership for userId:', userId)
 
       const { data, error } = await supabase
         .from('user_org_memberships')
@@ -55,8 +55,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .limit(1)
         .maybeSingle()
 
-      console.log('membership data:', data)
-      console.log('membership error:', error)
+      // console.log('membership data:', data)
+      // console.log('membership error:', error)
 
       if (error) {
         console.error('Error fetching org membership:', error)
@@ -125,7 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, newSession) => {
-        console.log('AUTH EVENT:', event, newSession?.user?.email)
+        // console.log('AUTH EVENT:', event, newSession?.user?.email)
 
         // Skip INITIAL_SESSION with no session — wait for SIGNED_IN instead
         if (event === 'INITIAL_SESSION' && !newSession) {
@@ -142,7 +142,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (newSession?.user) {
           setTimeout(async () => {
             const membership = await fetchOrgMembership(newSession.user.id)
-            console.log('MEMBERSHIP RESULT:', membership)
+            // console.log('MEMBERSHIP RESULT:', membership)
             setOrgId(membership?.org_id ?? null)
             setUserRole(membership?.role ?? null)
             setIsLoading(false)
@@ -158,7 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Safety timeout — if no real auth event fires within 3 seconds,
     // assume no session and show login
     timeoutId = setTimeout(() => {
-      console.log('AUTH TIMEOUT: No auth event received, showing login')
+      // console.log('AUTH TIMEOUT: No auth event received, showing login')
       setIsLoading(false)
     }, 3000)
 

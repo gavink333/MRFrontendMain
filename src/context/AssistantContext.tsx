@@ -69,7 +69,7 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
     if (!orgId || !user) return
 
     setIsLoadingAssistants(true)
-    console.log('Fetching assistants for org:', orgId)
+    // console.log('Fetching assistants for org:', orgId)
 
     try {
       // 1. Fetch assistant configs for this org
@@ -85,13 +85,13 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
       }
 
       if (!assistantData || assistantData.length === 0) {
-        console.log('No assistants found for org:', orgId)
+        // console.log('No assistants found for org:', orgId)
         setAssistants([])
         setIsLoadingAssistants(false)
         return
       }
 
-      console.log('Found assistants:', assistantData.length)
+      // console.log('Found assistants:', assistantData.length)
 
       // 2. Fetch pricing tiers for this org
       const { data: tierData } = await supabase
@@ -144,7 +144,7 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
         }
       })
 
-      console.log('Enriched assistants:', enrichedAssistants)
+      // console.log('Enriched assistants:', enrichedAssistants)
       setAssistants(enrichedAssistants)
 
       // Restore previously selected assistant from localStorage, or default to first
