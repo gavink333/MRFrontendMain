@@ -186,7 +186,6 @@ export default function Calendars() {
             .from('calendar_availability_overrides')
             .select('*')
             .eq('calendar_id', selectedCalendarId!)
-            .eq('is_active', true)
             .order('override_date'),
         ])
 
@@ -305,7 +304,7 @@ export default function Calendars() {
     try {
       await supabase
         .from('calendar_availability_overrides')
-        .update({ is_active: false })
+        .delete()
         .eq('id', id)
 
       setOverrides(prev => prev.filter(o => o.id !== id))
