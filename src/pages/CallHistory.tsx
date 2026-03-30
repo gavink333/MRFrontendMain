@@ -98,7 +98,7 @@ export default function CallHistory() {
           .select('*', { count: 'exact' })
           .eq('org_id', orgId!)
           .eq('assistant_id', assistantId)
-          .order('call_started_at', { ascending: false })
+          .order('call_started_at', { ascending: false, nullsFirst: false })
 
         // Apply date filters
         if (startDate) {
