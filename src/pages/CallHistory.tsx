@@ -63,6 +63,88 @@ function getToolNames(toolsCalled: any[] | null): string[] {
 // COMPONENT
 // ============================================================
 
+const GATEKEEPER_URL = 'https://vapiserverurl-497754777228.northamerica-northeast2.run.app'
+
+function RecordingPlayer({ gcsPath }: { gcsPath: string }) {
+  const [audioUrl, setAudioUrl] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const loadRecording = async () => {
+    // If it's already a full URL (old Vapi recordings), use directly
+    if (gcsPath.startsWith('http')) {
+      setAudioUrl(gcsPath)
+      return
+    }
+
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        setError('Not authenticated')
+        return
+      }
+
+      const resp = await fetch(`${GATEKEEPER_URL}/get-recording-url`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ gcs_path: gcsPath })
+      })
+
+      if (!resp.ok) {
+        setError('Failed to load recording')
+        return
+      }
+
+      const data = await resp.json()
+      setAudioUrl(data.url)
+    } catch (err) {
+      setError('Failed to load recording')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadRecording()
+  }, [gcsPath])
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-3 bg-white p-4 rounded-lg border border-gray-200">
+        <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+        <span className="text-sm text-gray-500">Loading recording...</span>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center gap-3 bg-white p-4 rounded-lg border border-gray-200">
+        <span className="text-sm text-red-500">{error}</span>
+      </div>
+    )
+  }
+
+  if (audioUrl) {
+    return (
+      <div className="bg-white p-4 rounded-lg border border-gray-200">
+        <audio controls className="w-full">
+          <source src={audioUrl} />
+          Your browser does not support audio playback.
+        </audio>
+      </div>
+    )
+  }
+
+  return null
+}
+
 export default function CallHistory() {
   const [calls, setCalls] = useState<CallLog[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -371,12 +453,7 @@ export default function CallHistory() {
                                   <div className="mb-6">
                                     <h4 className="text-sm font-medium text-gray-900 mb-2">Recording</h4>
                                     {call.recording_url ? (
-                                      <div className="bg-white p-4 rounded-lg border border-gray-200">
-                                        <audio controls className="w-full">
-                                          <source src={call.recording_url} />
-                                          Your browser does not support audio playback.
-                                        </audio>
-                                      </div>
+                                      <RecordingPlayer gcsPath={call.recording_url} />
                                     ) : (
                                       <div className="flex items-center gap-3 bg-white p-4 rounded-lg border border-gray-200 opacity-50">
                                         <button className="w-10 h-10 rounded-full bg-gray-300 text-white flex items-center justify-center cursor-not-allowed">
