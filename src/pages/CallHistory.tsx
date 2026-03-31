@@ -145,6 +145,65 @@ function RecordingPlayer({ gcsPath }: { gcsPath: string }) {
   return null
 }
 
+
+function CallSummary({ callId, existingSummary }: { callId: string; existingSummary: string | null }) {
+  const [summary, setSummary] = useState<string | null>(existingSummary)
+  const [isLoading, setIsLoading] = useState(false)
+  const [fetched, setFetched] = useState(false)
+
+  useEffect(() => {
+    if (existingSummary || fetched) return
+
+    async function fetchSummary() {
+      setIsLoading(true)
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session) return
+
+        const resp = await fetch(`${GATEKEEPER_URL}/get-call-summary`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({ call_id: callId })
+        })
+
+        if (resp.ok) {
+          const data = await resp.json()
+          if (data.summary) {
+            setSummary(data.summary)
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch summary:', err)
+      } finally {
+        setIsLoading(false)
+        setFetched(true)
+      }
+    }
+
+    fetchSummary()
+  }, [callId, existingSummary, fetched])
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2 bg-white p-4 rounded-lg border border-gray-200">
+        <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+        <span className="text-sm text-gray-500">Loading summary...</span>
+      </div>
+    )
+  }
+
+  return (
+    <p className="text-sm text-gray-600 bg-white p-4 rounded-lg border border-gray-200">
+      {summary || 'Summary not available'}
+    </p>
+  )
+}
+
+
+
 export default function CallHistory() {
   const [calls, setCalls] = useState<CallLog[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -430,9 +489,7 @@ export default function CallHistory() {
                                   {/* Summary */}
                                   <div className="mb-6">
                                     <h4 className="text-sm font-medium text-gray-900 mb-2">Summary</h4>
-                                    <p className="text-sm text-gray-600 bg-white p-4 rounded-lg border border-gray-200">
-                                      {call.transcript_summary || 'Summary not available'}
-                                    </p>
+                                    <CallSummary callId={call.call_id || call.id} existingSummary={call.transcript_summary} />
                                   </div>
 
                                   {/* Transcript */}
