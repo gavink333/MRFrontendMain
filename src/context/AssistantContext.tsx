@@ -16,6 +16,7 @@ export interface Assistant {
   call_logging_enabled: boolean
   transcripts_enabled: boolean
   summary_enabled: boolean
+  is_visible: boolean
   org_id: string
 
   // From org_assistant_pricing_tiers (joined)
@@ -136,6 +137,7 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
           call_logging_enabled: a.call_logging_enabled,
           transcripts_enabled: a.transcripts_enabled,
           summary_enabled: a.summary_enabled,
+          is_visible: a.is_visible ?? true,
           org_id: a.org_id,
           tier_name: tier?.tier_name || null,
           billing_unit_time: tier?.billing_unit_time || null,
@@ -145,12 +147,15 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
       })
 
       // console.log('Enriched assistants:', enrichedAssistants)
-      setAssistants(enrichedAssistants)
+
+      // Filter out assistants that are hidden (is_visible = false)
+      const visibleAssistants = enrichedAssistants.filter(a => a.is_visible)
+      setAssistants(visibleAssistants)
 
       // Restore previously selected assistant from localStorage, or default to first
       const savedId = localStorage.getItem('selectedAssistantId')
-      const restored = savedId ? enrichedAssistants.find(a => a.assistant_id === savedId) : null
-      setSelectedAssistantState(restored || enrichedAssistants[0])
+      const restored = savedId ? visibleAssistants.find(a => a.assistant_id === savedId) : null
+      setSelectedAssistantState(restored || visibleAssistants[0] || null)
 
     } catch (err) {
       console.error('Failed to fetch assistants:', err)
